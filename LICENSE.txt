@@ -1,0 +1,65 @@
+TechGuyTool – Custom Attribution License
+=======================================
+
+Copyright (c) 2026 TechGuyTool
+All rights reserved.
+
+This software and its associated scripts, logic, and documentation
+(the “Software”) are provided for educational, research, and personal use.
+
+--------------------------------------------------
+PERMITTED USE
+--------------------------------------------------
+You are allowed to:
+
+• Use this Software on your own devices
+• Study, inspect, and learn from the source code
+• Modify the Software for personal or educational purposes
+• Share the original, unmodified Software with others
+
+--------------------------------------------------
+RESTRICTIONS
+--------------------------------------------------
+You may NOT:
+
+• Sell this Software or any derivative work
+• Bundle, integrate, or embed this Software into paid tools or services
+• Redistribute modified versions without clear attribution
+• Remove or alter TechGuyTool branding, credits, or identifiers
+• Claim authorship of this Software or its logic
+
+Commercial use, resale, or inclusion in monetized products
+requires PRIOR written permission from the author.
+
+--------------------------------------------------
+ATTRIBUTION REQUIREMENT
+--------------------------------------------------
+Any public use, redistribution, or demonstration of this Software
+must clearly credit:
+
+TechGuyTool
+
+Credit must be visible in:
+• Documentation
+• User interface (where applicable)
+• Video demonstrations or tutorials
+
+--------------------------------------------------
+NO WARRANTY
+--------------------------------------------------
+This Software is provided “AS IS”, without warranty of any kind,
+express or implied.
+
+The author is not responsible for:
+• Device damage
+• Data loss
+• Security implications
+• Missed updates or vulnerabilities
+
+By using this Software, you accept full responsibility for its use.
+
+--------------------------------------------------
+CONTACT
+--------------------------------------------------
+WhatsApp: +26953166448
+YouTube : https://www.youtube.com/@TheTechguy12-h2d

@@ -1,0 +1,84 @@
+@echo off
+cls
+title TECHGUYTOOL - SAMSUNG OTA IDIOT PROOF
+color 0A
+
+echo ===============================================================================
+echo(
+echo   TTTTTTTTTT EEEEEEEEEE CCCCCCCCCC HHH    HHH  GGGGGGGGG  UUU    UUU YYY    YYY
+echo       TT     EE         CC         HHH    HHH  GG         UUU    UUU  YYY  YYY
+echo       TT     EEEEEEEE   CC         HHHHHHHHHH  GG   GGGG  UUU    UUU   YYYYYY
+echo       TT     EE         CC         HHH    HHH  GG     GG  UUU    UUU     YYYY
+echo       TT     EEEEEEEEEE CCCCCCCCCC HHH    HHH  GGGGGGGGG   UUUUUUUU      YYYY
+echo(
+echo                                   TECHGUYTOOL
+echo(
+echo                         ANDROID OTA - IDIOT PROOF
+echo   			      WhatsApp: +26953166448
+echo   			YouTube : https://www.youtube.com/@TheTechguy12-h2d
+echo(
+echo   Enable USB debugging on the phone and accept the RSA prompt.
+echo   Connect the USB cable.
+echo(
+echo   Samsung service shortcuts (model dependent):
+echo     *#0*#     Hardware test menu
+echo     *#0808#   USB configuration
+echo     *#*#88#*#*    Engineering / USB-related menu
+echo(
+echo ===============================================================================
+echo(
+
+:: ---- ADB CHECK ----
+where adb >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] adb.exe not found.
+    echo Place this script in the same folder as adb.exe
+    pause
+    exit /b
+)
+
+:: ---- START ADB ----
+adb kill-server >nul 2>&1
+adb start-server >nul 2>&1
+
+echo [*] Waiting for device...
+adb wait-for-device
+
+:: ---- VERIFY AUTHORIZED DEVICE ----
+set DEVICE_OK=
+for /f "tokens=2" %%i in ('adb devices ^| findstr /R "device$"') do set DEVICE_OK=1
+
+if not defined DEVICE_OK (
+    echo(
+    echo [ERROR] Device not authorized.
+    echo Check phone screen and ALLOW USB debugging.
+    pause
+    exit /b
+)
+
+echo [OK] Device connected and authorized
+echo(
+
+:: ---- CLEAR EXISTING UPDATE STATE ----
+echo [*] Clearing existing OTA data...
+adb shell pm clear com.wssyncmldm >nul 2>&1
+adb shell pm clear com.sec.android.soagent >nul 2>&1
+
+:: ---- DISABLE OTA COMPONENTS ----
+echo [*] Disabling Samsung OTA services...
+adb shell pm disable-user --user 0 com.wssyncmldm >nul 2>&1
+adb shell pm disable-user --user 0 com.sec.android.soagent >nul 2>&1
+adb shell pm disable-user --user 0 com.samsung.android.app.updatecenter >nul 2>&1
+
+:: ---- NOTIFICATION ----
+adb shell cmd notification post -t "TechGuyTool" TGT_OTA "Samsung OTA disabled"
+
+:: ---- FINALIZE ----
+echo Rebooting device to finalize...
+timeout /t 3 /nobreak >nul
+adb reboot
+
+echo(
+echo Done. Updates are permanently blocked.
+pause
+exit /b
