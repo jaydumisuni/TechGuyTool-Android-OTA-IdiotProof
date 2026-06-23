@@ -7,17 +7,15 @@ Purpose:
 
 Scope:
   Read/inventory only.
-  No reset, erase, format, unlock, FRP, ADB enable, shell, or generic NVRAM LID probing.
+  No reset, erase, format, unlock, FRP, ADB enable, shell, or write-calibration actions.
+
+Important:
+  NVRAM READ mode names are NOT blocked here. The point of this work is to read the device.
+  The orchestrator only blocks destructive/action words, then lets the local D4 runner decide whether a mode exists.
 
 Default behavior:
   Phase A only: None, TargetVerInfo.
-  Secondary vendor reads are opt-in with -RunSecondary.
-
-Usage from project root:
-  powershell -ExecutionPolicy Bypass -File .\tools\mtk_meta\RUN_D4_SAFE_READ_ORCHESTRATOR.ps1
-
-Optional one-by-one secondary reads:
-  powershell -ExecutionPolicy Bypass -File .\tools\mtk_meta\RUN_D4_SAFE_READ_ORCHESTRATOR.ps1 -RunSecondary -SecondaryModes BTMAC,WIFIMAC
+  Secondary/vendor reads are opt-in with -RunSecondary.
 #>
 
 [CmdletBinding()]
@@ -59,10 +57,7 @@ function Get-KernelMetaPort {
 }
 
 function Wait-KernelMetaPort {
-    param(
-        [int]$TimeoutSeconds = 30
-    )
-
+    param([int]$TimeoutSeconds = 30)
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
         $p = Get-KernelMetaPort
@@ -70,6 +65,11 @@ function Wait-KernelMetaPort {
         Start-Sleep -Milliseconds 500
     }
     return $null
+}
+
+function Test-DestructiveModeName {
+    param([string]$Mode)
+    return ($Mode -match '(?i)write|set|reset|format|erase|unlock|frp|adb|cal|flag|factory|wipe|delete|remove')
 }
 
 function Invoke-IsolatedReadMode {
@@ -140,7 +140,7 @@ function Invoke-IsolatedReadMode {
     "TimedOut=$timedOut" | Add-Content $metaFile -Encoding UTF8
     "Finished=$(Get-Date -Format o)" | Add-Content $metaFile -Encoding UTF8
 
-    $patterns = "success|Platform|Software|Build|ChipID|PSN|Serial|Barcode|IMEI|BT|Wi|WIFI|WLAN|MAC|ret|fail|error|exception|timeout|value|text|dump"
+    $patterns = "success|Platform|Software|Build|ChipID|PSN|Serial|Barcode|IMEI|BT|Wi|WIFI|WLAN|MAC|NVRAM|NV|ret|fail|error|exception|timeout|value|text|dump"
     $summary = ""
     if (Test-Path $outFile) {
         $hits = Get-Content $outFile | Select-String -Pattern $patterns
@@ -166,7 +166,6 @@ function Invoke-IsolatedReadMode {
     }
 }
 
-# Resolve project root. This script is expected under tools\mtk_meta, but it can also run from root.
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Resolve-Path (Join-Path $ScriptDir "..\..")
 Set-Location $ProjectRoot
@@ -186,14 +185,13 @@ Write-Step "TTG D4 SAFE READ ORCHESTRATOR"
 Write-Host "ProjectRoot=$ProjectRoot"
 Write-Host "Runner=$RunnerFull"
 Write-Host "AuditRoot=$AuditRoot" -ForegroundColor Yellow
-Write-Host "Guard: read/inventory only; no write/reset/erase/format/unlock/FRP/ADB/shell/generic NVRAM."
+Write-Host "Guard: read/inventory only; no write/reset/erase/format/unlock/FRP/ADB/shell/calibration-write actions. NVRAM read names are allowed."
 
 Write-Step "CHECK META PORT"
 $port = Wait-KernelMetaPort -TimeoutSeconds 30
 if (!$port) { throw "No Kernel META PID_2007 port found. Device must already be in META." }
 $port | Format-List | Tee-Object -FilePath (Join-Path $AuditRoot "meta_port.txt")
 
-# Phase A is intentionally small and stable. It validates AP-side existing META before any vendor helper is attempted.
 $modes = New-Object System.Collections.Generic.List[string]
 $modes.Add("None")
 $modes.Add("TargetVerInfo")
@@ -203,7 +201,7 @@ if ($RunSecondary) {
         if ($m -match '(?i)imei' -and !$AllowImeiRead) { continue }
         if ($m -match '(?i)barcode' -and !$AllowBarcodeRead) { continue }
         if ($m -match '(?i)appsn|psn|serial' -and !$AllowAppsNRead) { continue }
-        if ($m -match '(?i)write|set|reset|format|erase|unlock|frp|adb|cal|flag|nvram') { continue }
+        if (Test-DestructiveModeName -Mode $m) { continue }
         if (!$modes.Contains($m)) { $modes.Add($m) }
     }
 }
@@ -219,7 +217,6 @@ foreach ($m in $modes) {
     $r = Invoke-IsolatedReadMode -Mode $m -Index $i -AuditRoot $AuditRoot -RunnerFull $RunnerFull
     $results += $r
 
-    # Hard stop on native validation failures. Do not proceed into vendor helpers unless baseline remains clean.
     if (($m -eq "None" -or $m -eq "TargetVerInfo") -and ($r.TimedOut -or $r.ExitCode -ne 0)) {
         Write-Host "Baseline native phase failed or timed out. Stopping before secondary reads." -ForegroundColor Red
         break
@@ -233,4 +230,4 @@ $results | Select-Object Mode,ExitCode,TimedOut,Started,Stdout,Stderr,Meta | For
 $results | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $AuditRoot "summary.json") -Encoding UTF8
 
 Write-Host "`nAUDIT=$AuditRoot" -ForegroundColor Yellow
-Write-Host "Next test target: default run only. Paste summary.json and the stdout files for None + TargetVerInfo." -ForegroundColor Green
+Write-Host "Next test target: default run first. Paste summary.json and the stdout files for None + TargetVerInfo." -ForegroundColor Green
